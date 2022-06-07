@@ -27,10 +27,12 @@ from .ui.PrototypeConverter import ID_PLUGIN_CONVERTER
 
 
 def PluginMessage(msg_id, data):
-  if msg_id == c4d.C4DPL_BUILDMENU:
-    bc = find_menu_resource('M_EDITOR', 'IDS_SCRIPTING_MAIN')
-    bc.InsData(c4d.MENURESOURCE_SEPERATOR, True)
-    bc.InsData(c4d.MENURESOURCE_COMMAND, 'PLUGIN_CMD_' + str(ID_SCRIPT_CONVERTER))
-    bc.InsData(c4d.MENURESOURCE_COMMAND, 'PLUGIN_CMD_' + str(ID_PLUGIN_CONVERTER))
-    return True
-  return False
+    if msg_id == c4d.C4DPL_BUILDMENU:
+        # bc = find_menu_resource("M_EDITOR", "IDS_SCRIPTING_MAIN")
+        bc = find_menu_resource("M_EDITOR", "IDS_EDITOR_PIPELINE")
+        if bc:
+            bc.InsData(c4d.MENURESOURCE_SEPERATOR, True)
+            bc.InsData(c4d.MENURESOURCE_COMMAND, "PLUGIN_CMD_" + str(ID_SCRIPT_CONVERTER))
+            bc.InsData(c4d.MENURESOURCE_COMMAND, "PLUGIN_CMD_" + str(ID_PLUGIN_CONVERTER))
+            return True
+    return False

@@ -26,79 +26,84 @@ import sys
 
 
 class ParseError(Exception):
-  pass
+    pass
 
 
 def support_parse_position(parser):
-  """
-  Hooks as SAX parser's `set_content_handler()` method to publish a
-  `parse_position` member to every node.
-  """
+    """
+    Hooks as SAX parser's `set_content_handler()` method to publish a
+    `parse_position` member to every node.
+    """
 
-  # Thanks to https://stackoverflow.com/a/5133181/791713
-  def set_content_handler(dom_handler):
-    def startElementNS(name, tagName, attrs):
-      orig_start_cb(name, tagName, attrs)
-      cur_elem = dom_handler.elementStack[-1]
-      cur_elem.parse_position = (
-        parser._parser.CurrentLineNumber,
-        parser._parser.CurrentColumnNumber
-      )
+    # Thanks to https://stackoverflow.com/a/5133181/791713
+    def set_content_handler(dom_handler):
+        def startElementNS(name, tagName, attrs):
+            orig_start_cb(name, tagName, attrs)
+            cur_elem = dom_handler.elementStack[-1]
+            cur_elem.parse_position = (
+                parser._parser.CurrentLineNumber,
+                parser._parser.CurrentColumnNumber,
+            )
 
-    orig_start_cb = dom_handler.startElementNS
-    dom_handler.startElementNS = startElementNS
-    orig_set_content_handler(dom_handler)
+        orig_start_cb = dom_handler.startElementNS
+        dom_handler.startElementNS = startElementNS
+        orig_set_content_handler(dom_handler)
 
-  orig_set_content_handler = parser.setContentHandler
-  parser.setContentHandler = set_content_handler
+    orig_set_content_handler = parser.setContentHandler
+    parser.setContentHandler = set_content_handler
 
 
 def load_xml_widgets(string, globals, insert_widget):
-  """
-  Parses an XML string and converts it to a view hierarchy. The *insert_widget*
-  function will be called with arguments *(parent, child)* to insert the child
-  widget into the parent widget.
-  """
+    """
+    Parses an XML string and converts it to a view hierarchy. The *insert_widget*
+    function will be called with arguments *(parent, child)* to insert the child
+    widget into the parent widget.
+    """
 
-  parser = sax.make_parser()
-  support_parse_position(parser)
-  doc = minidom.parseString(string, parser)
+    parser = sax.make_parser()
+    support_parse_position(parser)
+    doc = minidom.parseString(string, parser)
 
-  def parse(node):
-    if node.nodeType != node.ELEMENT_NODE:
-      if node.nodeType == node.TEXT_NODE:
-        if not node.nodeValue.strip():
-          return  # empty text is ok
-        raise ParseError(node.parentNode.parse_position, "found non-empty text")
-      raise ParseError(node.parse_position, "got node type: {}".format(node.nodeType))
-    parts = node.nodeName.split('.')
-    if parts[0] not in globals:
-      raise ParseError(node.parse_position, 'name "{}" not defined'.format(parts[0]))
+    def parse(node):
+        if node.nodeType != node.ELEMENT_NODE:
+            if node.nodeType == node.TEXT_NODE:
+                if not node.nodeValue.strip():
+                    return  # empty text is ok
+                raise ParseError(node.parentNode.parse_position, "found non-empty text")
+            raise ParseError(
+                node.parse_position, "got node type: {}".format(node.nodeType)
+            )
+        parts = node.nodeName.split(".")
+        if parts[0] not in globals:
+            raise ParseError(
+                node.parse_position, 'name "{}" not defined'.format(parts[0])
+            )
 
-    member = globals[parts[0]]
-    for part in parts[1:]:
-      try:
-        member = getattr(member, part)
-      except AttributeError as exc:
-        raise ParseError(node.parse_position, exc)
+        member = globals[parts[0]]
+        for part in parts[1:]:
+            try:
+                member = getattr(member, part)
+            except AttributeError as exc:
+                raise ParseError(node.parse_position, exc)
 
-    kwargs = {}
-    for key, value in node.attributes.items():
-      kwargs[key] = value
-    try:
-      widget = member(**kwargs)
-    except TypeError as exc:
-      tb = sys.exc_info()[2]
-      raise TypeError, TypeError('{}: {}'.format(member.__name__, exc)), tb
-    #try:
-    #except Exception as exc:
-    #  raise ParseError(node.parse_position, '{}(): {}'.format(member.__name__, exc))
+        kwargs = {}
+        for key, value in node.attributes.items():
+            kwargs[key] = value
+        try:
+            widget = member(**kwargs)
+        except TypeError as exc:
+            tb = sys.exc_info()[2]
+            _raised = [TypeError, TypeError("{}: {}".format(member.__name__, exc)), tb]
+            raise _raised
+        # try:
+        # except Exception as exc:
+        #  raise ParseError(node.parse_position, '{}(): {}'.format(member.__name__, exc))
 
-    for child_node in node.childNodes:
-      child_widget = parse(child_node)
-      if child_widget is not None:
-        insert_widget(widget, child_widget)
+        for child_node in node.childNodes:
+            child_widget = parse(child_node)
+            if child_widget is not None:
+                insert_widget(widget, child_widget)
 
-    return widget
+        return widget
 
-  return parse(doc.childNodes[0])
+    return parse(doc.childNodes[0])

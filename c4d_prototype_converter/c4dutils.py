@@ -23,38 +23,43 @@
 import collections
 import c4d
 
-try: from cStringIO import StringIO
-except ImportError: from StringIO import StringIO
+try:
+    import cStringIO as StringIO
+except ImportError:
+    try:
+        import StringIO
+    except ImportError:
+        import io as StringIO
 
 
 def unicode_refreplace(ustring):
-  '''
-  Replaces all non-ASCII characters in the supplied unicode string with
-  Cinema 4D stringtable unicode escape sequences. Returns a binary string.
-  '''
+    """
+    Replaces all non-ASCII characters in the supplied unicode string with
+    Cinema 4D stringtable unicode escape sequences. Returns a binary string.
+    """
 
-  if not isinstance(ustring, unicode):
-    ustring = ustring.decode('utf8')
+    if not isinstance(ustring, unicode):
+        ustring = ustring.decode("utf8")
 
-  fp = StringIO()
-  for char in ustring:
-    try:
-      if char in '\n\r\t\b':
-        raise UnicodeEncodeError
-      char = char.encode('ascii')
-    except UnicodeEncodeError:
-      char = '\\u' + ('%04x' % ord(char)).upper()
-    fp.write(char)
+    fp = StringIO()
+    for char in ustring:
+        try:
+            if char in "\n\r\t\b":
+                raise UnicodeEncodeError
+            char = char.encode("ascii")
+        except UnicodeEncodeError:
+            char = "\\u" + ("%04x" % ord(char)).upper()
+        fp.write(char)
 
-  return fp.getvalue()
+    return fp.getvalue()
 
 
 def get_subcontainer(bc, sub_id, create=False):
-  if not has_subcontainer(bc, sub_id) and create:
-    bc.SetContainer(sub_id, c4d.BaseContainer())
-    assert has_subcontainer(bc, sub_id)
-  return bc.GetContainerInstance(sub_id)
+    if not has_subcontainer(bc, sub_id) and create:
+        bc.SetContainer(sub_id, c4d.BaseContainer())
+        assert has_subcontainer(bc, sub_id)
+    return bc.GetContainerInstance(sub_id)
 
 
 def has_subcontainer(bc, sub_id):
-  return bc.GetType(sub_id) == c4d.DA_CONTAINER
+    return bc.GetType(sub_id) == c4d.DA_CONTAINER
